@@ -29,7 +29,7 @@ def register_user():
     # Aquí puedes agregar la lógica para manejar el registro del usuario
     # Por ejemplo, guardarlo en una base de datos o alguna otra operación necesaria
     print(f'Usuario registrado: {userId}')
-    on_join();
+    on_join(data)
     # Retorna una respuesta de éxito
     return jsonify({'message': 'Usuario registrado exitosamente'}), 200
 
