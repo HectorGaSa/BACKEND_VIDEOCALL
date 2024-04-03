@@ -6,6 +6,9 @@ app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+room_messages = {}
+
+
 @socketio.on_error_default  # Captura todos los espacios de nombres sin un manejador de errores registrado.
 def default_error_handler(e):
     print(f'Ha ocurrido un error: {str(e)}')
@@ -26,7 +29,7 @@ def register_user():
     # Aquí puedes agregar la lógica para manejar el registro del usuario
     # Por ejemplo, guardarlo en una base de datos o alguna otra operación necesaria
     print(f'Usuario registrado: {userId}')
-    
+    on_join();
     # Retorna una respuesta de éxito
     return jsonify({'message': 'Usuario registrado exitosamente'}), 200
 
@@ -51,7 +54,9 @@ def on_join(data):
             raise ValueError('Faltan datos necesarios: userId o room.')
         join_room(room)
         print(f'{username} se ha unido a la sala: {room}')
-        #emit('joined_room', {'message': f'{userId} se ha unido a la sala {room}'})
+        # Enviar mensajes anteriores de la sala al usuario
+        for message in room_messages.get(room, []):
+            emit('message', message, to=request.sid)
         emit('joined_room', {'message': f'{username} se ha unido a la sala {room}'}, to=room)
     except KeyError as e:
         emit('error', {'error': f'Falta el campo {e.args[0]}'})
@@ -76,6 +81,17 @@ def handle_send_answer(json):
         emit('receive_answer', json, room=room)
     except KeyError as e:
         emit('error', {'error': f'Falta el campo {e.args[0]}'})
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    room = data['room']
+    message = data['message']
+    # Almacenar el mensaje en la sala correspondiente
+    if room not in room_messages:
+        room_messages[room] = []
+    room_messages[room].append(message)
+    # Emitir el mensaje a todos en la sala
+    emit('message', message, to=room)
 
 # Manejar el envío de candidatos ICE
 @socketio.on('send_candidate')
