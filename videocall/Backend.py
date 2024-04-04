@@ -77,7 +77,24 @@ def handle_send_message(data):
         if room not in room_messages:
             room_messages[room] = []
         room_messages[room].append({'owner': owner, 'message': message})
-        emit('message', {'owner': owner, 'message': message}, room=room, include_self=False)
+        emit('message', {'owner': f'{owner}', 'message': f'{message}'}, room=room, include_self=False)
+        print(f'{owner}: {message}')
+    except KeyError as e:
+        emit('error', {'error': f'Falta el campo {e.args[0]}'})
+    except ValueError as e:
+        emit('error', {'error': str(e)})
+        
+@socketio.on('get_message')
+def handle_get_message(data):
+    try:
+        owner = data['owner']
+        room = data['room']
+        if not owner or not room:
+            raise ValueError('Faltan datos necesarios: owner o room.')
+        if room not in room_messages:
+            room_messages[room] = []
+        for message in room_messages.get(room, []):
+            emit('message', f'{owner}: {message}', to=request.sid)
     except KeyError as e:
         emit('error', {'error': f'Falta el campo {e.args[0]}'})
     except ValueError as e:
