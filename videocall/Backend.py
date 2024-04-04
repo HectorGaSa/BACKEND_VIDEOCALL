@@ -7,6 +7,8 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 room_messages = {}
+users = {}  # Esto es solo para demostración. Para producción, usa una base de datos.
+
 
 
 @socketio.on_error_default  # Captura todos los espacios de nombres sin un manejador de errores registrado.
@@ -29,7 +31,7 @@ def register_user():
     # Aquí puedes agregar la lógica para manejar el registro del usuario
     # Por ejemplo, guardarlo en una base de datos o alguna otra operación necesaria
     print(f'Usuario registrado: {userId}')
-    on_join(data)
+    users[userId] = {"rooms": []}  # Simula almacenamiento en memoria
     # Retorna una respuesta de éxito
     return jsonify({'message': 'Usuario registrado exitosamente'}), 200
 
@@ -63,6 +65,24 @@ def on_join(data):
     except ValueError as e:
         emit('error', {'error': str(e)})
 
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    try:
+        owner = data['owner']
+        message = data['message']
+        room = data['room']
+        if not owner or not message or not room:
+            raise ValueError('Faltan datos necesarios: owner, message o room.')
+        if room not in room_messages:
+            room_messages[room] = []
+        room_messages[room].append({'owner': owner, 'message': message})
+        emit('message', {'owner': owner, 'message': message}, room=room, include_self=False)
+    except KeyError as e:
+        emit('error', {'error': f'Falta el campo {e.args[0]}'})
+    except ValueError as e:
+        emit('error', {'error': str(e)})
+        
 
 # Manejar el envío de oferta SDP
 @socketio.on('send_offer')
